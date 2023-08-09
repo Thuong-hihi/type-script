@@ -1,20 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import Joi from 'joi';
 
-const UpdateProductPage = ({ updateProduct, productToUpdate }) => {
-  const [inputValues, setInputValues] = useState({
-    name: '',
-    price: '',
-  });
-
+const UpdateProductPage = ({ updateProduct, productToUpdate, products }) => {
+  const { id } = useParams(); // Nhận id của sản phẩm từ URL
+  const currentProduct = products.find(product => product.id == id);
+  
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (productToUpdate) {
-      // Nếu có productToUpdate được truyền vào props, chúng ta sẽ sử dụng nó để điền vào các trường nhập liệu khi trong chế độ cập nhật.
-      setInputValues(productToUpdate);
-    }
-  }, [productToUpdate]);
+  const schema = Joi.object({
+      name: Joi.string().trim().required().label("Tên sản phẩm"),
+      image: Joi.string().uri().required().label("Hình ảnh sản phẩm"),
+      price: Joi.number().min(0).required().label("Giá sản phẩm").positive().precision(2),
+      description: Joi.string().required().label("Mô tả sản phẩm"),
+      categoryId: Joi.number().min(1).required().label("Mã danh mục sản phẩm")
+  });
+  const [inputValues, setInputValues] = useState({
+    name: currentProduct?.name || '',
+    image: currentProduct?.image || '',
+    price: currentProduct?.price || '',
+    description: currentProduct?.description || '',
+    categoryId: currentProduct?.categoryId || ''
+  });
 
   const onHandleChange = (event) => {
     const { name, value } = event.target;
@@ -24,36 +31,93 @@ const UpdateProductPage = ({ updateProduct, productToUpdate }) => {
     }));
   };
 
-  const onHandleSubmit = async (e) => {
+  const validateForm = () => {
+    const { error } = schema.validate(inputValues, { abortEarly: false });
+    if (!error) return null;
+
+    const validationErrors = {};
+    for (let item of error.details) {
+        validationErrors[item.path[0]] = item.message;
+    }
+    return validationErrors;
+  };
+
+  const onHandleSubmit = (e) => {
     e.preventDefault();
-    await updateProduct(inputValues);
-    // Reset form fields after submission (optional)
-    setInputValues({
-      name: '',
-      price: '',
-    });
+    const validationErrors = validateForm();
+    if (validationErrors) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    updateProduct({ ...inputValues, "id": id }); // Gọi hàm updateProduct và truyền dữ liệu đã cập nhật
     navigate("/admin");
   };
 
   return (
     <div>
-      <h2>Update Product</h2>
+      <h2 className='text-[24px] font-bold mx-[20px] text-center my-[20px]'>Update Product</h2>
+      <Link to="/admin">List Product</Link>
       <form action="" onSubmit={onHandleSubmit}>
-        <input
+      
+        <input 
+         className={`border rounded-[5px] w-full my-[10px] ${errors.name &&'border-red-400' }`}
           type="text"
           name="name"
           placeholder="Enter Product Name"
-          value={inputValues.name}
+          defaultValue={currentProduct?.name}
+          // value={inputValues.name}
           onChange={onHandleChange}
         />
-        <input
+        {errors.name && <p className='text-red-500 text-sm">{errors.name}'>{errors.name}</p>}
+
+
+        <input  
+        className={`border rounded-[5px] w-full my-[10px] ${errors.image &&'border-red-400' }`}
+          type="text"
+          name="image"
+          placeholder="Enter Product Image"
+          defaultValue={currentProduct?.image}
+
+          // value={inputValues.price}
+          onChange={onHandleChange}
+        />
+        {errors.image && <p className='text-red-500 text-sm">{errors.name}'>{errors.image}</p>}
+
+
+          <input  
+          className={`border rounded-[5px] w-full my-[10px] ${errors.price &&'border-red-400' }`}
           type="number"
           name="price"
           placeholder="Enter Product Price"
-          value={inputValues.price}
+          defaultValue={currentProduct?.price}
+
+          // value={inputValues.price}
           onChange={onHandleChange}
         />
-        <button type="submit">Update</button>
+        {errors.price && <p className='text-red-500 text-sm">{errors.name}'>{errors.price}</p>}
+          <input
+          type="text"  className='border rounded-[5px] w-full my-[10px]' 
+          name="description"
+          placeholder="Enter Product Description "
+          defaultValue={currentProduct?.description}
+
+          // value={inputValues.price}
+          onChange={onHandleChange}
+        />
+        {errors.description && <p className='text-red-500 text-sm">{errors.name}'>{errors.description}</p>}
+          <input
+          type="number" 
+          className={`border rounded-[5px] w-full my-[10px] ${errors.categoryId &&'border-red-400' }`}
+          name="categoryId"
+          placeholder="Enter Product CategoryId"
+          defaultValue={currentProduct?.categoryId}
+
+          // value={inputValues.price}
+          onChange={onHandleChange}
+        />
+        {errors.categoryId && <p className='text-red-500 text-sm">{errors.name}'>{errors.categoryId}</p>}
+        <button className="text-[16px]  border w-[80px] rounded-[5px] bg-[#d1d5db]" type="submit">Update</button>
       </form>
     </div>
   );
